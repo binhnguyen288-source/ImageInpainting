@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <input type="file" onchange="process(this)" style="margin-bottom: 1rem;">
+       
+        <div style="position: relative; margin-bottom: 1rem;">
+            <canvas id="mask" style="position: absolute; border: 2px solid black; z-index: 0;"></canvas>
+            <canvas id="image" style="border: 2px solid black; z-index: -1;"></canvas>
+            <canvas id="result" style="border: 2px solid black;"></canvas>
+        </div>
+        
+        <button onclick="start_inpaint()">Inpaint</button>
+        
+
+        <script src="out.js"></script>
+        <script>
+            const width = 400;
+            const height = 400;
+            const mask_canvas = document.getElementById("mask");
+            mask_canvas.width = width;
+            mask_canvas.height = height;
+            const ctx_mask = mask_canvas.getContext("2d");
+            const image_canvas = document.getElementById("image");
+            image_canvas.width = width;
+            image_canvas.height = height;
+            const ctx_image = image_canvas.getContext("2d");
+            const result_canvas = document.getElementById("result");
+            result_canvas.width = width;
+            result_canvas.height = height;
+            const ctx_result = result_canvas.getContext("2d");
+            let wasm = null;
+            const wasmPromise = new Promise(async resolve => {
+                wasm = await stitcher();
+                resolve();
+            });
+            async function start_inpaint() {
+                await wasmPromise;
+
+                const img_buffer = wasm._malloc(4 * width * height);
+                const mask_buffer = wasm._malloc(4 * width * height);
+                const image_data = ctx_image.getImageData(0, 0, width, height);
+                const mask_data = ctx_mask.getImageData(0, 0, width, height);
+                
+                wasm.HEAPU8.set(image_data.data, img_buffer);
+                wasm.HEAPU8.set(mask_data.data, mask_buffer);
+
+                const dst = wasm.ccall("stitchImage", 'number', ['number', 'number', 'number', 'number'], [img_buffer, mask_buffer, width, height]);
+                
+                wasm._free(img_buffer);
+                wasm._free(mask_buffer);
+                const result_uint8 = new Uint8ClampedArray(wasm.HEAPU8.subarray(dst, dst + 4 * width * height));
+                ctx_result.putImageData(new ImageData(result_uint8, width, height), 0, 0);
+            }
+          
+            const preview = document.createElement('img');
+            function process(e) {
+                const reader = new FileReader();
+                reader.onload = v => {
+                    preview.src = v.target.result;
+                    preview.onload = () => ctx_image.drawImage(preview, 0, 0, width, height);
+                }
+                reader.readAsDataURL(e.files[0]);
+            }
+
+
+            let flag = false;
+
+
+            mask_canvas.onmousedown = () => flag = true;
+            mask_canvas.onmouseup   = () => flag = false;
+            mask_canvas.onmouseout  = () => flag = false;
+
+            mask_canvas.onmousemove = evt => {
+                var rect = mask_canvas.getBoundingClientRect();
+                if (flag) {
+                    const currX = evt.clientX - rect.left;
+                    const currY = evt.clientY - rect.top;
+                    ctx_mask.beginPath();
+                    ctx_mask.fillStyle = "white";
+                    ctx_mask.ellipse(currX, currY, 8, 8, 0, 0, 2 * Math.PI);
+                    ctx_mask.fill();
+                }
+            }
+        </script>
+    </body>
+</html>
