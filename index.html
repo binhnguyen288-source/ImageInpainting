@@ -57,7 +57,11 @@
                 const reader = new FileReader();
                 reader.onload = v => {
                     preview.src = v.target.result;
-                    preview.onload = () => ctx_image.drawImage(preview, 0, 0, width, height);
+                    preview.onload = () => {
+                        width = preview.naturalWidth;
+                        height = preview.naturalHeight;
+                        ctx_image.drawImage(preview, 0, 0, width, height);
+                    }
                 }
                 reader.readAsDataURL(e.files[0]);
             }
