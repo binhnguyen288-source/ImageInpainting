@@ -17,16 +17,13 @@
             let width = 400;
             let height = 400;
             const mask_canvas = document.getElementById("mask");
-            mask_canvas.width = width;
-            mask_canvas.height = height;
+            
             const ctx_mask = mask_canvas.getContext("2d");
             const image_canvas = document.getElementById("image");
-            image_canvas.width = width;
-            image_canvas.height = height;
+            
             const ctx_image = image_canvas.getContext("2d");
             const result_canvas = document.getElementById("result");
-            result_canvas.width = width;
-            result_canvas.height = height;
+            
             const ctx_result = result_canvas.getContext("2d");
             let wasm = null;
             const wasmPromise = new Promise(async resolve => {
@@ -60,6 +57,12 @@
                     preview.onload = () => {
                         width = preview.naturalWidth;
                         height = preview.naturalHeight;
+                        mask_canvas.width = width;
+                        mask_canvas.height = height;
+                        image_canvas.width = width;
+                        image_canvas.height = height;
+                        result_canvas.width = width;
+                        result_canvas.height = height;
                         ctx_image.drawImage(preview, 0, 0, width, height);
                     }
                 }
